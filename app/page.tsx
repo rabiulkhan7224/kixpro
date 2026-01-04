@@ -1,3 +1,4 @@
+import BrandCard from "@/components/home/brandCard";
 import HeroSection from "@/components/home/heroSection";
 
 export default function Home() {
@@ -6,6 +7,7 @@ export default function Home() {
   return (
     <div className="">
       <HeroSection />
+      <BrandCard />
     </div>
   );
 }
