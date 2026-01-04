@@ -18,7 +18,11 @@ const collection = [
     link: "#",
   },
   {
-    name: "New Sneakers",
+    name: "Best Sellers",
+    link: "#",
+  },
+  {
+    name: "Sneakers ",
     link: "#",
   },
   {
