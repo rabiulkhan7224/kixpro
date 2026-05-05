@@ -12,6 +12,10 @@
 
 # testing
 /coverage
+.claude/
+.agents/
+skills-lock.json
+
 
 # next.js
 /.next/

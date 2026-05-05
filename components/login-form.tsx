@@ -23,6 +23,8 @@ import { LoginFormValues, loginSchema } from "@/types";
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { login } from "@/lib/actions/auth"; // ensure this path is correct
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 export function LoginForm({
   className,
@@ -41,10 +43,13 @@ export function LoginForm({
       password: "",
     },
   });
+  const router = useRouter();
 
   const onSubmit = async (data: LoginFormValues) => {
     try {
       const result = await login(data);
+      toast.success("Login successful!");
+      router.push("/dashboard"); // Redirect to dashboard or desired page
       if (result.error) {
         // Server‑returned error (e.g., "Invalid credentials")
         setError("root", {
