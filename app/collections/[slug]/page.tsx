@@ -4,7 +4,6 @@ import { useRef } from "react";
 import Image from "next/image";
 import gsap from "gsap";
 import { ChevronDown } from "lucide-react";
-import { useParams } from "next/navigation";
 import { useGSAP } from "@gsap/react";
 
 const SIZES = [
@@ -28,8 +27,11 @@ const FILTERS = [
   "ON SALE",
 ];
 
-export default function CollectionPage() {
-  const params = useParams();
+export default function CollectionPage({
+  params,
+}: {
+  params: { slug: string | string[] };
+}) {
   const slug = Array.isArray(params.slug) ? params.slug[0] : params.slug;
   const scope = useRef(null);
 

@@ -1,6 +1,4 @@
-"use client";
-
-import { Menu, SearchIcon, ShoppingCartIcon, User, User2 } from "lucide-react";
+import { Menu, SearchIcon, ShoppingCartIcon, User2 } from "lucide-react";
 import { Input } from "../ui/input";
 import {
   Sheet,
@@ -12,6 +10,8 @@ import {
 import Image from "next/image";
 import { Button } from "../ui/button";
 import Link from "next/link";
+import { getUser, logout } from "@/lib/actions/auth";
+import UserDropdown from "./user-dropdown";
 const collection = [
   {
     name: "New Arrivals",
@@ -38,7 +38,9 @@ const collection = [
     link: "#",
   },
 ];
-const Navbar = () => {
+export default async function Navbar() {
+  const user = await getUser();
+
   return (
     <section className="container mx-auto fixed top-0 z-50 right-0 left-0 gap-2 bg-background/95 px-4 py-1 shadow-md backdrop-blur ">
       <div className="flex items-center justify-between">
@@ -69,6 +71,15 @@ const Navbar = () => {
                 {item.name}
               </Link>
             ))}
+
+            {!user && (
+              <Link
+                href="/login"
+                className="text-sm hover:underline block py-2 font-medium"
+              >
+                Login
+              </Link>
+            )}
           </SheetContent>
         </Sheet>
 
@@ -87,18 +98,43 @@ const Navbar = () => {
             </div>
           </form>
           {/* logo */}
-          <div className={`max-w-[250px]  w-full `}>
+          <div className="max-w-62.5 w-full">
             <Image
               src="/kix-pro.png"
               alt="Kix Pro"
               width={300}
               height={80}
-              className="w-full h-[50px] object-cover "
+              className="w-full h-12.5 object-cover"
             />
           </div>
+
           {/*  */}
-          <div className="flex item-center justify-between">
-            <User size={24} />
+          <div className="flex items-center justify-between gap-2">
+            {user ? (
+              <UserDropdown
+                user={user}
+                userLogOut={logout}
+                defaultOpen={false}
+                trigger={
+                  <div className="rounded-full border border-input bg-muted p-1.5 cursor-pointer">
+                    <User2 className="h-5 w-5" />
+                  </div>
+                }
+              />
+            ) : (
+              <>
+                <Link href="/login" className="hidden lg:inline-flex">
+                  <Button variant="outline" size="sm">
+                    Login
+                  </Button>
+                </Link>
+                <Link href="/login" className="lg:hidden">
+                  <Button variant="ghost" size="icon">
+                    <User2 className="h-5 w-5" />
+                  </Button>
+                </Link>
+              </>
+            )}
             <ShoppingCartIcon size={24} />
           </div>
         </nav>
@@ -119,6 +155,4 @@ const Navbar = () => {
       </div>
     </section>
   );
-};
-
-export default Navbar;
+}

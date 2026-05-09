@@ -1,5 +1,5 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import UserDropdown from "@/components/shadcn-space/blocks/dashboard-shell-01/user-dropdown";
+import UserDropdown from "@/components/shared/user-dropdown";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import NotificationDropdown from "@/components/shadcn-space/blocks/dashboard-shell-01/notification-dropdown";
 import { BellRing, SearchIcon } from "lucide-react";

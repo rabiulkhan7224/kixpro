@@ -48,25 +48,22 @@ export function LoginForm({
   const onSubmit = async (data: LoginFormValues) => {
     try {
       const result = await login(data);
-      toast.success("Login successful!");
-      router.push("/dashboard"); // Redirect to dashboard or desired page
+
       if (result.error) {
-        // Server‑returned error (e.g., "Invalid credentials")
         setError("root", {
-          message: result.error,
+          message:
+            typeof result.error === "string" ? result.error : "Login failed",
         });
-      } else {
-        // Success – redirect or update state
-        console.log("Login successful", result);
-        // e.g. router.push("/dashboard");
+
+        return;
       }
+
+      toast.success("Login successful!");
+      router.push("/dashboard");
     } catch (err) {
-      // Real network / unexpected error
       setError("root", {
         message:
-          err instanceof Error
-            ? err.message
-            : "An unexpected error occurred. Please try again.",
+          err instanceof Error ? err.message : "Unexpected error occurred",
       });
     }
   };

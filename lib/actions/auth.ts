@@ -1,41 +1,48 @@
 "use server";
 
-import { cookies } from "next/headers";
 import {
-  signupSchema,
-  loginSchema,
-  SignupFormValues,
-  ApiSignupValues,
   apiSignupSchema,
+  ApiSignupValues,
   LoginFormValues,
+  loginSchema,
+  User,
 } from "@/types/auth";
-import { z } from "zod";
+
+import { revalidateTag } from "next/cache";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 // Helper to set auth cookies
 async function setAuthCookies(accessToken: string, refreshToken?: string) {
   const cookieStore = await cookies();
-  cookieStore.set("access_token", accessToken, {
+
+  cookieStore.set({
+    name: "access_token",
+    value: accessToken,
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
+    path: "/",
     maxAge: 60 * 15, // 15 minutes
   });
+
   if (refreshToken) {
-    cookieStore.set("refresh_token", refreshToken, {
+    cookieStore.set({
+      name: "refresh_token",
+      value: refreshToken,
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
+      path: "/",
       maxAge: 60 * 60 * 24 * 7, // 7 days
     });
   }
 }
 
-// Signup action
+// Signup
 export async function signupUser(data: ApiSignupValues) {
-  // Server-side validation
-  console.log("data", data);
   const result = apiSignupSchema.safeParse(data);
   if (!result.success) {
     return { error: result.error.flatten().fieldErrors };
@@ -48,23 +55,25 @@ export async function signupUser(data: ApiSignupValues) {
       body: JSON.stringify(result.data),
     });
 
-    const data = await res.json();
+    const responseData = await res.json();
+
     if (!res.ok) {
-      return { error: data.message || "Signup failed" };
+      return { error: responseData.message || "Signup failed" };
     }
 
-    // If the API returns tokens immediately after signup, set them
-    if (data.accessToken) {
-      await setAuthCookies(data.accessToken, data.refreshToken);
+    if (responseData.accessToken) {
+      await setAuthCookies(responseData.accessToken, responseData.refreshToken);
+      revalidateTag("user", "max");
     }
 
-    return { success: true, data };
+    return { success: true, data: responseData };
   } catch (error) {
+    console.error("Signup error:", error);
     return { error: "An unexpected error occurred" };
   }
 }
 
-// Login action
+// Login
 export async function login(data: LoginFormValues) {
   const result = loginSchema.safeParse(data);
   if (!result.success) {
@@ -78,46 +87,70 @@ export async function login(data: LoginFormValues) {
       body: JSON.stringify(result.data),
     });
 
-    const data = await res.json();
+    const responseData = await res.json();
+
     if (!res.ok) {
-      return { error: data.message || "Invalid credentials" };
+      return { error: responseData.message || "Invalid credentials" };
     }
 
-    if (data.accessToken) {
-      await setAuthCookies(data.accessToken, data.refreshToken);
+    if (responseData.accessToken) {
+      await setAuthCookies(responseData.accessToken, responseData.refreshToken);
+      revalidateTag("user", "max");
     }
 
-    return { success: true, data };
+    return { success: true, data: responseData };
   } catch (error) {
+    console.error("Login error:", error);
     return { error: "An unexpected error occurred" };
   }
 }
 
-// Logout action
-export async function logout() {
-  const cookieStore = await cookies();
-  cookieStore.delete("access_token");
-  cookieStore.delete("refresh_token");
-  return { success: true };
-}
-
-// Get current user from token (optional)
-export async function getCurrentUser() {
-  const cookieStore = await cookies();
-  const accessToken = cookieStore.get("access_token")?.value;
-
-  if (!accessToken) return null;
-
+// Get Current User
+export async function getUser(): Promise<User | null> {
   try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get("access_token")?.value;
+
+    if (!token) return null;
+
     const res = await fetch(`${API_BASE}/auth/me`, {
       headers: {
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${token}`,
       },
+      cache: "no-store", // Stronger for auth
+      next: { tags: ["user"] },
     });
+
     if (!res.ok) return null;
-    const user = await res.json();
-    return user;
-  } catch {
+
+    return await res.json();
+  } catch (error) {
+    console.error("Failed to fetch user:", error);
     return null;
   }
+}
+
+// Logout - Fixed Version
+export async function logout() {
+  const cookieStore = await cookies();
+
+  // Proper cookie deletion
+  cookieStore.delete({
+    name: "access_token",
+    path: "/",
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+  });
+
+  cookieStore.delete({
+    name: "refresh_token",
+    path: "/",
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+  });
+
+  revalidateTag("user", "max");
+
+  // Redirect after logout (best practice)
+  redirect("/");
 }
