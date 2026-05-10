@@ -1,8 +1,8 @@
 // app/admin/products/[...slug]/page.tsx
 import { notFound } from "next/navigation";
-import ProductForm from "@/components/admin/ProductForm";
-import ProductView from "@/components/admin/ProductView";
-import DeleteProductConfirm from "@/components/admin/DeleteProductConfirm";
+// import ProductForm from "@/components/admin/ProductForm";
+// import ProductView from "@/components/admin/ProductView";
+// import DeleteProductConfirm from "@/components/admin/DeleteProductConfirm";
 
 type Props = {
   params: Promise<{ slug: string[] }>;
@@ -23,7 +23,7 @@ export default async function ProductCatchAllPage({
     return (
       <div className="p-6 max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-6">Add New Product</h1>
-        <ProductForm mode="create" />
+        {/* <ProductForm mode="create" /> */}
       </div>
     );
   }
@@ -46,7 +46,7 @@ export default async function ProductCatchAllPage({
     return (
       <div className="p-6 max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-6">Product Details</h1>
-        <ProductView product={product} />
+        {/* <ProductView product={product} /> */}
       </div>
     );
   }
@@ -56,7 +56,7 @@ export default async function ProductCatchAllPage({
     return (
       <div className="p-6 max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-6">Edit Product</h1>
-        <ProductForm mode="edit" product={product} />
+        {/* <ProductForm mode="edit" product={product} /> */}
       </div>
     );
   }
@@ -65,7 +65,7 @@ export default async function ProductCatchAllPage({
   if (action === "delete") {
     return (
       <div className="p-6 max-w-md mx-auto">
-        <DeleteProductConfirm id={id} productName={product.name} />
+        {/* <DeleteProductConfirm id={id} productName={product.name} /> */}
       </div>
     );
   }
