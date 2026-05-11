@@ -64,7 +64,7 @@ async function CategoryPageContent({ params, searchParams }: Props) {
         <Suspense
           fallback={<div className="py-20 text-center">Loading form...</div>}
         >
-          {/* <CategoryForm mode="edit" category={category} /> */}
+          <CategoryForm mode="edit" category={category} />
         </Suspense>
       </div>
     );

@@ -18,12 +18,8 @@ import { useState } from "react";
 import { CldUploadButton } from "next-cloudinary";
 import Image from "next/image";
 import { X } from "lucide-react";
-
-const formSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  description: z.string().optional(),
-  image: z.string().optional(), // Will store Cloudinary secure_url
-});
+import { categorySchema } from "@/types/category";
+import { createCategory } from "@/lib/actions/category";
 
 export default function CategoryForm({
   mode,
@@ -36,8 +32,8 @@ export default function CategoryForm({
     category?.image || null,
   );
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<z.infer<typeof categorySchema>>({
+    resolver: zodResolver(categorySchema),
     defaultValues: {
       name: category?.name || "",
       description: category?.description || "",
@@ -45,18 +41,16 @@ export default function CategoryForm({
     },
   });
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (values: z.infer<typeof categorySchema>) => {
     try {
-      console.log("Submitting:", values);
-      // Here you will call your server action or API
-      toast.success(
-        mode === "create"
-          ? "Category created successfully!"
-          : "Category updated successfully!",
-      );
-    } catch (error) {
-      console.error(error);
-      toast.error("Something went wrong. Please try again.");
+      if (mode === "create") {
+        await createCategory(values);
+        toast.success("Category created successfully!");
+      } else if (category?.id) {
+        // await updateCategory(category.id, formData);
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Something went wrong");
     }
   };
 
