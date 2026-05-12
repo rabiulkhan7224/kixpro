@@ -25,6 +25,17 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -45,6 +56,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import Image from "next/image";
+import { deleteCategory } from "@/lib/actions/category";
+import { toast } from "sonner";
 
 type Category = {
   id: string;
@@ -53,11 +66,21 @@ type Category = {
   description?: string;
   image?: string;
   createdAt: string;
+  updatedAt: string;
 };
 
 export function DataTable({ data }: { data: Category[] }) {
   const router = useRouter();
   const [globalFilter, setGlobalFilter] = useState("");
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    id: string;
+    name: string;
+  }>({
+    open: false,
+    id: "",
+    name: "",
+  });
 
   const columns: ColumnDef<Category>[] = [
     {
@@ -122,6 +145,13 @@ export function DataTable({ data }: { data: Category[] }) {
         new Date(row.getValue("createdAt")).toLocaleDateString(),
     },
     {
+      accessorKey: "updatedAt",
+      header: "Updated At",
+      cell: ({ row }) =>
+        new Date(row.getValue("updatedAt")).toLocaleDateString(),
+    },
+
+    {
       id: "actions",
       header: "Actions",
       cell: ({ row }) => {
@@ -152,13 +182,16 @@ export function DataTable({ data }: { data: Category[] }) {
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={() =>
-                  router.push(`/admin/categories/delete?id=${category.id}`)
-                }
                 className="text-destructive focus:text-destructive"
+                onClick={() =>
+                  setDeleteDialog({
+                    open: true,
+                    id: category.id,
+                    name: category.name,
+                  })
+                }
               >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete
+                <Trash2 className="mr-2 h-4 w-4" /> Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -178,6 +211,18 @@ export function DataTable({ data }: { data: Category[] }) {
     onGlobalFilterChange: setGlobalFilter,
   });
 
+  // Delete Handler
+  const handleDeleteConfirm = async () => {
+    try {
+      await deleteCategory(deleteDialog.id);
+      toast.success("Category deleted successfully");
+      setDeleteDialog({ open: false, id: "", name: "" });
+      // Refresh data
+      window.location.reload(); // or use router.refresh() if using server component
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete category");
+    }
+  };
   // Export Functions
   const exportToCSV = () => {
     const dataToExport = table
@@ -249,6 +294,34 @@ export function DataTable({ data }: { data: Category[] }) {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog
+          open={deleteDialog.open}
+          onOpenChange={(open) =>
+            setDeleteDialog((prev) => ({ ...prev, open }))
+          }
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete{" "}
+                <span className="font-medium">"{deleteDialog.name}"</span>. This
+                action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteConfirm}
+                className="bg-destructive hover:bg-destructive/90"
+              >
+                Delete Category
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
 
       <div className="rounded-md border">

@@ -1,9 +1,10 @@
 // app/admin/categories/[...slug]/page.tsx
+import CategoryForm from "@/components/admin/Category/categoryForm";
+import CategoryView from "@/components/admin/Category/CategoryView";
+import DeleteCategoryConfirm from "@/components/admin/Category/DeleteCategoryConfirm";
+import { getCategoryById } from "@/lib/actions/category";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import CategoryForm from "@/components/admin/Category/categoryForm";
-// import CategoryView from "@/components/admin/Category/CategoryView";
-// import DeleteCategoryConfirm from "@/components/admin/Category/DeleteCategoryConfirm";
 
 type Props = {
   params: Promise<{ slug: string[] }>;
@@ -42,8 +43,8 @@ async function CategoryPageContent({ params, searchParams }: Props) {
   if (!id) notFound();
 
   // Fetch category
-  // const category = await getCategoryById(id);
-  const category = null; // ← Replace with real fetch later
+  const category = await getCategoryById(id);
+  console.log(category);
 
   if (!category) notFound();
 
@@ -51,7 +52,7 @@ async function CategoryPageContent({ params, searchParams }: Props) {
   if (action === "view") {
     return (
       <div className="p-6 max-w-4xl mx-auto">
-        {/* <CategoryView category={category} /> */}
+        <CategoryView category={category} />
       </div>
     );
   }
@@ -72,11 +73,7 @@ async function CategoryPageContent({ params, searchParams }: Props) {
 
   // DELETE
   if (action === "delete") {
-    return (
-      <div className="p-6 max-w-md mx-auto">
-        {/* <DeleteCategoryConfirm id={id} name={category.name} /> */}
-      </div>
-    );
+    return <DeleteCategoryConfirm id={id} name={category.name} />;
   }
 
   notFound();

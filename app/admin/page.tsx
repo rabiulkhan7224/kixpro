@@ -1,3 +1,4 @@
+import ProductDescriptionEditor from "@/components/admin/ProductDescriptionEditor";
 import AppSidebar from "@/components/shadcn-space/blocks/dashboard-shell-01/app-sidebar";
 import EarningReportChart from "@/components/shadcn-space/blocks/dashboard-shell-01/earning-report-chart";
 import SalesOverviewChart from "@/components/shadcn-space/blocks/dashboard-shell-01/sales-overview-chart";
@@ -22,7 +23,8 @@ export default function AdminPage() {
           <TopProductTable />
         </div>
         <div className="xl:col-span-4 col-span-12">
-          <SalesByCountryWidget />
+          {/* <SalesByCountryWidget /> */}
+          <ProductDescriptionEditor />
         </div>
       </div>
     </AppSidebar>

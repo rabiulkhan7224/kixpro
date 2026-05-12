@@ -85,6 +85,7 @@ export async function updateCategory(id: string, data: categoryFormValues) {
     }
 
     revalidateTag("categories", {});
+    return { success: true, data: responseData };
   } catch (error) {
     handleRedirectError(error);
     console.error("[Update Category Error]", error);

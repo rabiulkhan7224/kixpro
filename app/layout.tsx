@@ -1,9 +1,8 @@
-import Footer from "@/components/shared/Footer";
+import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Orbitron } from "next/font/google";
 import "./globals.css";
-import { Toaster } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -38,7 +37,7 @@ export default function RootLayout({
         {/* nav bar */}
 
         <TooltipProvider>{children}</TooltipProvider>
-        <Footer />
+
         <Toaster richColors position="top-right" />
       </body>
     </html>

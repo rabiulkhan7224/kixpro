@@ -14,12 +14,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useState } from "react";
+import { use, useState } from "react";
 import { CldUploadButton } from "next-cloudinary";
 import Image from "next/image";
 import { X } from "lucide-react";
 import { categorySchema } from "@/types/category";
-import { createCategory } from "@/lib/actions/category";
+import { createCategory, updateCategory } from "@/lib/actions/category";
+import { useRouter } from "next/navigation";
 
 export default function CategoryForm({
   mode,
@@ -31,6 +32,8 @@ export default function CategoryForm({
   const [imageUrl, setImageUrl] = useState<string | null>(
     category?.image || null,
   );
+
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof categorySchema>>({
     resolver: zodResolver(categorySchema),
@@ -46,8 +49,11 @@ export default function CategoryForm({
       if (mode === "create") {
         await createCategory(values);
         toast.success("Category created successfully!");
+        router.push("/admin/categories");
       } else if (category?.id) {
-        // await updateCategory(category.id, formData);
+        await updateCategory(category.id, values);
+        toast.success("Category updated successfully!");
+        router.push("/admin/categories");
       }
     } catch (error: any) {
       toast.error(error.message || "Something went wrong");

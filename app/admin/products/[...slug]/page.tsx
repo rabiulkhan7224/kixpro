@@ -1,4 +1,5 @@
 // app/admin/products/[...slug]/page.tsx
+import ProductForm from "@/components/admin/product/ProductForm";
 import { notFound } from "next/navigation";
 // import ProductForm from "@/components/admin/ProductForm";
 // import ProductView from "@/components/admin/ProductView";
@@ -23,7 +24,7 @@ export default async function ProductCatchAllPage({
     return (
       <div className="p-6 max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-6">Add New Product</h1>
-        {/* <ProductForm mode="create" /> */}
+        <ProductForm mode="create" />
       </div>
     );
   }
