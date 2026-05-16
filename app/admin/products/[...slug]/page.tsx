@@ -1,44 +1,52 @@
 // app/admin/products/[...slug]/page.tsx
 import ProductForm from "@/components/admin/product/ProductForm";
+import {
+  getBrands,
+  getCategories,
+  getCollections,
+} from "@/lib/actions/product";
 import { notFound } from "next/navigation";
-// import ProductForm from "@/components/admin/ProductForm";
-// import ProductView from "@/components/admin/ProductView";
-// import DeleteProductConfirm from "@/components/admin/DeleteProductConfirm";
+import { Suspense } from "react";
 
 type Props = {
   params: Promise<{ slug: string[] }>;
   searchParams: Promise<{ id?: string }>;
 };
 
-export default async function ProductCatchAllPage({
+async function ProductFormContent({
   params,
   searchParams,
-}: Props) {
+}: {
+  params: Promise<{ slug: string[] }>;
+  searchParams: Promise<{ id?: string }>;
+}) {
   const { slug } = await params;
   const { id } = await searchParams;
-
   const action = slug[0]?.toLowerCase();
+
+  const [brands, categories, collections] = await Promise.all([
+    getBrands(),
+    getCategories(),
+    getCollections(),
+  ]);
 
   // 1. CREATE NEW PRODUCT
   if (action === "new") {
     return (
       <div className="p-6 max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-6">Add New Product</h1>
-        <ProductForm mode="create" />
+        <ProductForm
+          categories={categories}
+          brands={brands}
+          collections={collections}
+          mode="create"
+        />
       </div>
     );
   }
 
   // Require ID for edit, view, delete
   if (!id) {
-    notFound();
-  }
-
-  // Fetch product once (for edit, view, delete)
-  // const product = await getProductById(id);
-  const product = null; // ← Replace with your actual data fetching
-
-  if (!product) {
     notFound();
   }
 
@@ -73,4 +81,15 @@ export default async function ProductCatchAllPage({
 
   // Invalid route
   notFound();
+}
+
+export default async function ProductCatchAllPage({
+  params,
+  searchParams,
+}: Props) {
+  return (
+    <Suspense fallback={<div className="p-6">Loading...</div>}>
+      <ProductFormContent params={params} searchParams={searchParams} />
+    </Suspense>
+  );
 }

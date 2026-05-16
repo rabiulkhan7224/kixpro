@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { useFieldArray, useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -24,67 +24,257 @@ import {
 import { useState } from "react";
 import { CldUploadButton } from "next-cloudinary";
 import Image from "next/image";
-import { X } from "lucide-react";
-import { ProductFormValues, productSchema } from "@/types/product";
+import { X, Upload, Trash2, Plus } from "lucide-react";
+import { createProduct } from "@/lib/actions/product";
+import { productSchema } from "@/types/product";
+
+type ProductFormValues = z.infer<typeof productSchema>;
+
+type ProductFormProps = {
+  mode?: "create" | "edit";
+  product?: Partial<ProductFormValues>;
+  brands: any[];
+  categories: any[];
+  collections: any[];
+};
+
+type VariantItemProps = {
+  variant: any;
+  vIndex: number;
+  form: any;
+  onRemove: (index: number) => void;
+};
+
+function VariantItem({ variant, vIndex, form, onRemove }: VariantItemProps) {
+  const {
+    fields: optionFields,
+    append: appendOption,
+    remove: removeOption,
+  } = useFieldArray({
+    control: form.control,
+    name: `variants.${vIndex}.optionValues`,
+  });
+
+  return (
+    <div
+      key={variant.id}
+      className="border p-6 rounded-lg relative bg-muted/30"
+    >
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="absolute top-4 right-4"
+        onClick={() => onRemove(vIndex)}
+      >
+        <Trash2 size={20} />
+      </Button>
+
+      <h3 className="font-semibold mb-6">Variant {vIndex + 1}</h3>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {/* Basic Variant Fields */}
+        <Field>
+          <FieldLabel>SKU</FieldLabel>
+          <Input {...form.register(`variants.${vIndex}.sku`)} />
+        </Field>
+
+        <Field>
+          <FieldLabel>Price</FieldLabel>
+          <Input
+            type="number"
+            step="0.01"
+            {...form.register(`variants.${vIndex}.price`, {
+              valueAsNumber: true,
+            })}
+          />
+        </Field>
+
+        <Field>
+          <FieldLabel>Compare At Price</FieldLabel>
+          <Input
+            type="number"
+            step="0.01"
+            {...form.register(`variants.${vIndex}.compareAtPrice`, {
+              valueAsNumber: true,
+            })}
+          />
+        </Field>
+
+        <Field>
+          <FieldLabel>Size</FieldLabel>
+          <Input
+            {...form.register(`variants.${vIndex}.size`)}
+            placeholder="M, L, XL"
+          />
+        </Field>
+
+        <Field>
+          <FieldLabel>Color</FieldLabel>
+          <Input {...form.register(`variants.${vIndex}.color`)} />
+        </Field>
+
+        <Field>
+          <FieldLabel>Quantity</FieldLabel>
+          <Input
+            type="number"
+            {...form.register(`variants.${vIndex}.inventory.quantity`, {
+              valueAsNumber: true,
+            })}
+          />
+        </Field>
+
+        {/* Option Values - Dynamic Attributes */}
+        <div className="md:col-span-3 mt-4">
+          <FieldLabel>Option Values (Attributes)</FieldLabel>
+          <FieldDescription>
+            Add attributes like Color, Size, Material etc.
+          </FieldDescription>
+
+          {optionFields.map((opt, optIndex) => (
+            <div key={opt.id} className="flex gap-3 mt-3">
+              <Input
+                placeholder="Attribute (e.g. Color)"
+                {...form.register(
+                  `variants.${vIndex}.optionValues.${optIndex}.key`,
+                )}
+              />
+              <Input
+                placeholder="Value (e.g. Red)"
+                {...form.register(
+                  `variants.${vIndex}.optionValues.${optIndex}.value`,
+                )}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => removeOption(optIndex)}
+              >
+                <Trash2 size={18} />
+              </Button>
+            </div>
+          ))}
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-4"
+            onClick={() => appendOption({ key: "", value: "" })}
+          >
+            <Plus size={16} className="mr-2" />
+            Add Attribute
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function ProductForm({
   mode = "create",
   product,
-}: {
-  mode?: "create" | "edit";
-  product?: any;
-}) {
-  const [imageUrl, setImageUrl] = useState<string | null>(
-    product?.image || null,
-  );
+  brands = [],
+  categories = [],
+  collections = [],
+}: ProductFormProps) {
+  const [imageUrls, setImageUrls] = useState<string[]>(product?.images || []);
+  const [showVariants, setShowVariants] = useState(true);
+
+  const emptyVariant: ProductFormValues["variants"][number] = {
+    sku: "",
+    price: 0,
+    compareAtPrice: 0,
+    costPerItem: 0,
+    size: "",
+    color: "",
+    material: "",
+    style: "",
+    weight: 0,
+    weightUnit: "g",
+    currency: "USD",
+    barcode: "",
+    taxable: true,
+    optionValues: [],
+    inventory: {
+      quantity: 0,
+      lowStockThreshold: 5,
+      allowBackorder: false,
+    },
+  };
+
+  const defaultValues: ProductFormValues = {
+    title: product?.title || "",
+    description: product?.description || "",
+    brandId: product?.brandId || "",
+    categoryId: product?.categoryId || "",
+    collectionId: product?.collectionId || "",
+    images: product?.images || [],
+    variants: (product?.variants as ProductFormValues["variants"]) || [
+      emptyVariant,
+    ],
+  };
 
   const form = useForm<ProductFormValues>({
-    resolver: zodResolver(productSchema),
-    defaultValues: {
-      title: product?.title || "",
-      slug: product?.slug || "",
-      description: product?.description || "",
-      brandId: product?.brandId || "",
-      categoryId: product?.categoryId || "",
-      collectionId: product?.collectionId || "",
-      image: product?.image || "",
-    },
+    resolver: zodResolver(productSchema) as Resolver<ProductFormValues>,
+    defaultValues,
+  });
+
+  const {
+    fields: variantFields,
+    append: appendVariant,
+    remove: removeVariant,
+  } = useFieldArray({
+    control: form.control,
+    name: "variants",
   });
 
   const handleUploadSuccess = (result: any) => {
     const url = result?.info?.secure_url;
     if (url) {
-      setImageUrl(url);
-      form.setValue("image", url);
+      const newImages = [...imageUrls, url];
+      setImageUrls(newImages);
+      form.setValue("images", newImages, { shouldValidate: true });
       toast.success("Image uploaded successfully!");
     }
   };
 
-  const removeImage = () => {
-    setImageUrl(null);
-    form.setValue("image", "");
+  const removeImage = (index: number) => {
+    const updatedImages = imageUrls.filter((_, i) => i !== index);
+    setImageUrls(updatedImages);
+    form.setValue("images", updatedImages, { shouldValidate: true });
   };
 
-  const onSubmit = async (values: ProductFormValues) => {
+  const onSubmit = async (values: z.infer<typeof productSchema>) => {
     try {
-      console.log("Product Data:", values);
+      console.log("Submitted Product:", values);
+
+      const result = await createProduct(values);
+      console.log("result", result);
+      if (result?.success === false) {
+        toast.error(result.error || "Failed to create product");
+        return;
+      }
+
       toast.success(
         mode === "create"
           ? "Product created successfully!"
-          : "Product updated successfully!",
+          : "Product updated!",
       );
-      // Call your server action here later
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to submit the form");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to submit form");
     }
   };
 
   return (
     <Form {...form}>
       <form
-        onSubmit={form.handleSubmit(onSubmit)}
-        className="space-y-8 max-w-4xl mx-auto py-10"
+        onSubmit={form.handleSubmit(onSubmit, (error) => {
+          console.log("Validation Errors:", error);
+          toast.error("Please fix the validation errors before submitting.");
+        })}
+        className="space-y-10 max-w-5xl mx-auto py-10"
       >
         {/* Title & Slug */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -96,26 +286,11 @@ export default function ProductForm({
             />
             <FieldError>{form.formState.errors.title?.message}</FieldError>
           </Field>
-
-          <Field>
-            <FieldLabel>Slug</FieldLabel>
-            <Input
-              placeholder="premium-cotton-t-shirt"
-              {...form.register("slug")}
-            />
-            <FieldError>{form.formState.errors.slug?.message}</FieldError>
-          </Field>
         </div>
 
-        {/* Description */}
         <Field>
           <FieldLabel>Description</FieldLabel>
-          <Textarea
-            rows={4}
-            placeholder="Ultra-soft, breathable cotton tee..."
-            {...form.register("description")}
-          />
-          <FieldError>{form.formState.errors.description?.message}</FieldError>
+          <Textarea rows={4} {...form.register("description")} />
         </Field>
 
         {/* Brand, Category, Collection */}
@@ -123,16 +298,18 @@ export default function ProductForm({
           <Field>
             <FieldLabel>Brand</FieldLabel>
             <Select
-              onValueChange={(value) => form.setValue("brandId", value)}
+              onValueChange={(v) => form.setValue("brandId", v)}
               defaultValue={form.watch("brandId")}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select Brand" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="brand1">ComfortWear</SelectItem>
-                <SelectItem value="brand2">UrbanStyle</SelectItem>
-                <SelectItem value="brand3">PremiumCo</SelectItem>
+                {brands.map((b: any) => (
+                  <SelectItem key={b.id} value={b.id}>
+                    {b.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <FieldError>{form.formState.errors.brandId?.message}</FieldError>
@@ -141,18 +318,18 @@ export default function ProductForm({
           <Field>
             <FieldLabel>Category</FieldLabel>
             <Select
-              onValueChange={(value) => form.setValue("categoryId", value)}
+              onValueChange={(v) => form.setValue("categoryId", v)}
               defaultValue={form.watch("categoryId")}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select Category" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="caa91e35-9715-4259-9f52-35fb120e70fb">
-                  T-Shirts
-                </SelectItem>
-                <SelectItem value="cat2">Jeans</SelectItem>
-                <SelectItem value="cat3">Hoodies</SelectItem>
+                {categories.map((c: any) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <FieldError>{form.formState.errors.categoryId?.message}</FieldError>
@@ -161,17 +338,18 @@ export default function ProductForm({
           <Field>
             <FieldLabel>Collection</FieldLabel>
             <Select
-              onValueChange={(value) => form.setValue("collectionId", value)}
+              onValueChange={(v) => form.setValue("collectionId", v)}
               defaultValue={form.watch("collectionId")}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select Collection" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="f3b5e8c3-1e9a-4c3a-a9b2-2d8e7d6a1f0c">
-                  Summer 2026
-                </SelectItem>
-                <SelectItem value="col2">Winter Collection</SelectItem>
+                {collections.map((c: any) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <FieldError>
@@ -180,49 +358,117 @@ export default function ProductForm({
           </Field>
         </div>
 
-        {/* Image Upload */}
+        {/* Images */}
         <Field>
-          <FieldLabel>Featured Image</FieldLabel>
-          <FieldDescription>Upload main product image</FieldDescription>
+          <FieldLabel>Product Images</FieldLabel>
+          <FieldDescription>
+            Upload multiple images (First image will be featured)
+          </FieldDescription>
 
-          {!imageUrl && (
-            <CldUploadButton
-              uploadPreset="your_upload_preset" // ← Change this
-              onSuccess={handleUploadSuccess}
-              options={{
-                maxFiles: 1,
-                resourceType: "image",
-                clientAllowedFormats: ["jpg", "png", "webp"],
-              }}
-              className="w-full border-2 border-dashed border-gray-300 rounded-xl py-12 hover:border-primary"
-            >
-              Click to upload image
-            </CldUploadButton>
-          )}
+          <CldUploadButton
+            uploadPreset={process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET}
+            onSuccess={handleUploadSuccess}
+            options={{ maxFiles: 8, multiple: true }}
+            className="w-full border-2 border-dashed border-gray-300 rounded-xl py-12 hover:border-primary transition-colors"
+          >
+            <div className="flex flex-col items-center">
+              <Upload className="h-8 w-8 mb-2 text-muted-foreground" />
+              <p className="font-medium">Click to upload multiple images</p>
+            </div>
+          </CldUploadButton>
 
-          {imageUrl && (
-            <div className="relative inline-block mt-4">
-              <Image
-                src={imageUrl}
-                alt="Product"
-                width={300}
-                height={300}
-                className="rounded-xl object-cover border"
-              />
-              <button
-                type="button"
-                onClick={removeImage}
-                className="absolute -top-3 -right-3 bg-red-500 text-white p-1 rounded-full"
-              >
-                <X size={18} />
-              </button>
+          {imageUrls.length > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+              {imageUrls.map((url, index) => (
+                <div key={index} className="relative group">
+                  <Image
+                    src={url}
+                    alt=""
+                    width={200}
+                    height={200}
+                    className="rounded-xl object-cover border"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeImage(index)}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100"
+                  >
+                    <X size={16} />
+                  </button>
+                  {index === 0 && (
+                    <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                      Featured
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           )}
-
-          <Input type="hidden" {...form.register("image")} />
+          <Input type="hidden" {...form.register("images")} />
+          <FieldError>{form.formState.errors.images?.message}</FieldError>
         </Field>
 
-        <Button type="submit" size="lg" className="w-full">
+        {/* Variants */}
+        <div className="border rounded-xl p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-semibold">Variants</h2>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowVariants(!showVariants)}
+            >
+              {showVariants ? "Hide Variants" : "Show Variants"}
+            </Button>
+          </div>
+
+          {showVariants && (
+            <div className="space-y-8">
+              {variantFields.map((variant, vIndex) => (
+                <VariantItem
+                  key={variant.id}
+                  variant={variant}
+                  vIndex={vIndex}
+                  form={form}
+                  onRemove={removeVariant}
+                />
+              ))}
+              <FieldError>{form.formState.errors.variants?.message}</FieldError>
+
+              <Button
+                type="button"
+                onClick={() =>
+                  appendVariant({
+                    sku: "",
+                    price: 0,
+                    compareAtPrice: 0,
+                    costPerItem: 0,
+                    optionValues: [],
+                    weightUnit: "g",
+                    currency: "USD",
+                    barcode: "",
+                    taxable: true,
+                    inventory: {
+                      quantity: 0,
+                      lowStockThreshold: 5,
+                      allowBackorder: false,
+                    },
+                  })
+                }
+                variant="outline"
+                className="w-full"
+              >
+                <Plus className="mr-2" /> Add Another Variant
+              </Button>
+            </div>
+          )}
+        </div>
+
+        <Button
+          type="submit"
+          size="lg"
+          className="w-full"
+          // disabled={form.formState.isSubmitting}
+        >
           {mode === "create" ? "Create Product" : "Update Product"}
         </Button>
       </form>

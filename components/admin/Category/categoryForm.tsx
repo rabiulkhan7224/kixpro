@@ -110,7 +110,7 @@ export default function CategoryForm({
           {/* Upload Button */}
           {!imageUrl && (
             <CldUploadButton
-              uploadPreset="kixpro" // ← Change this!
+              uploadPreset="kixpro"
               onSuccess={handleUploadSuccess}
               options={{
                 maxFiles: 1,
