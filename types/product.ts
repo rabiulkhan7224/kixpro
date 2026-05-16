@@ -18,13 +18,14 @@ const variantSchema = z.object({
   taxable: z.boolean().optional(),
   optionValues: z
     .array(
-      z.object({
-        key: z.string(),
-        value: z.string(),
-      }),
+      z
+        .object({
+          key: z.string(),
+          value: z.string(),
+        })
+        .default({ key: "", value: "" }),
     )
-    .optional()
-    .default([]),
+    .optional(),
 
   inventory: z
     .object({
@@ -65,7 +66,6 @@ export type Product = {
 export type Variant = {
   sku: string;
   price: number;
-  attributes?: Attributes;
   compareAtPrice: number;
   costPerItem: number;
   size?: string;
@@ -77,7 +77,7 @@ export type Variant = {
   currency?: string;
   barcode?: string;
   taxable?: boolean;
-  optionValues?: Attributes;
+  optionValues?: Array<{ key: string; value: string }>;
   inventory?: Inventory;
   productId?: string;
 };

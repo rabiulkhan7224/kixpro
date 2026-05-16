@@ -1,5 +1,9 @@
 "use client";
-import React from "react";
+import Logo from "@/assets/logo/logo";
+import { NavMain } from "@/components/dashboard/nav-main";
+import { SiteHeader } from "@/components/dashboard/site-header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Sidebar,
   SidebarContent,
@@ -8,22 +12,19 @@ import {
   SidebarMenuItem,
   SidebarProvider,
 } from "@/components/ui/sidebar";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import Logo from "@/assets/logo/logo";
-import { NavMain } from "@/components/shadcn-space/blocks/dashboard-shell-01/nav-main";
 import {
-  LayoutDashboard,
-  Package,
-  ShoppingCart,
-  Users,
-  Tag,
-  Megaphone,
-  Settings,
   ChevronRight,
+  LayoutDashboard,
   LucideIcon,
+  Megaphone,
+  Package,
+  Settings,
+  ShoppingCart,
+  Tag,
+  Users,
+  BoxSelectIcon,
 } from "lucide-react";
-import { SiteHeader } from "@/components/shadcn-space/blocks/dashboard-shell-01/site-header";
+import React from "react";
 import SimpleBar from "simplebar-react";
 import "simplebar-react/dist/simplebar.min.css";
 
@@ -58,13 +59,39 @@ export const navData: NavItem[] = [
   },
   {
     title: "Categories",
-    icon: Tag,
+    icon: BoxSelectIcon,
     href: "/admin/categories",
+    children: [
+      { title: "All categories", href: "/admin/categories" },
+      { title: "Add New", href: "/admin/categories/new" },
+    ],
   },
   {
-    title: "Attributes",
+    title: "Collections",
     icon: Tag,
-    href: "/admin/attributes",
+    href: "/admin/collections",
+    children: [
+      { title: "All collections", href: "/admin/collections" },
+      { title: "Add New", href: "/admin/collections/new" },
+    ],
+  },
+  {
+    title: "Brands",
+    icon: Tag,
+    href: "/admin/brands",
+    children: [
+      { title: "All brands", href: "/admin/brands" },
+      { title: "Add New", href: "/admin/brands/new" },
+    ],
+  },
+  {
+    title: "inventory",
+    icon: Tag,
+    href: "/admin/inventory",
+    children: [
+      { title: "All inventory", href: "/admin/inventory" },
+      { title: "Add New", href: "/admin/inventory/new" },
+    ],
   },
 
   // Sales
@@ -113,7 +140,7 @@ const AppSidebar = ({ children }: { children: React.ReactNode }) => {
           <SidebarContent className="overflow-hidden gap-0 px-0">
             <SimpleBar
               autoHide={true}
-              className="h-[calc(100vh-348px)] border-b border-border"
+              className="h-[calc(100vh-248px)] border-b border-border"
             >
               <div className="px-4">
                 <NavMain items={navData} />
@@ -122,7 +149,7 @@ const AppSidebar = ({ children }: { children: React.ReactNode }) => {
 
             {/* ---- Replace promo card with store stats ---- */}
             <div className="pt-4 px-4">
-              <Card className="shadow-none ring-0 bg-muted/50 px-4 py-4">
+              <Card className="shadow-none ring-0 bg-muted/50 p-2">
                 <CardContent className="p-0 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Today’s sales</span>

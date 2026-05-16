@@ -16,7 +16,7 @@ import {
   SidebarMenuSubItem,
   SidebarMenuSubButton,
 } from "@/components/ui/sidebar";
-import { NavItem } from "@/components/shadcn-space/blocks/dashboard-shell-01/app-sidebar";
+import { NavItem } from "@/components/dashboard/app-sidebar";
 import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
 

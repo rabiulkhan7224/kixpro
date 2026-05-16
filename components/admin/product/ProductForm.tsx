@@ -38,14 +38,18 @@ type ProductFormProps = {
   collections: any[];
 };
 
-type VariantItemProps = {
+// ---------- Variant Item Component ----------
+function VariantItem({
+  variant,
+  vIndex,
+  form,
+  onRemove,
+}: {
   variant: any;
   vIndex: number;
   form: any;
   onRemove: (index: number) => void;
-};
-
-function VariantItem({ variant, vIndex, form, onRemove }: VariantItemProps) {
+}) {
   const {
     fields: optionFields,
     append: appendOption,
@@ -56,10 +60,7 @@ function VariantItem({ variant, vIndex, form, onRemove }: VariantItemProps) {
   });
 
   return (
-    <div
-      key={variant.id}
-      className="border p-6 rounded-lg relative bg-muted/30"
-    >
+    <div className="border p-6 rounded-lg relative bg-muted/30">
       <Button
         type="button"
         variant="ghost"
@@ -73,7 +74,7 @@ function VariantItem({ variant, vIndex, form, onRemove }: VariantItemProps) {
       <h3 className="font-semibold mb-6">Variant {vIndex + 1}</h3>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {/* Basic Variant Fields */}
+        {/* Basic fields */}
         <Field>
           <FieldLabel>SKU</FieldLabel>
           <Input {...form.register(`variants.${vIndex}.sku`)} />
@@ -102,10 +103,21 @@ function VariantItem({ variant, vIndex, form, onRemove }: VariantItemProps) {
         </Field>
 
         <Field>
+          <FieldLabel>Cost Per Item</FieldLabel>
+          <Input
+            type="number"
+            step="0.01"
+            {...form.register(`variants.${vIndex}.costPerItem`, {
+              valueAsNumber: true,
+            })}
+          />
+        </Field>
+
+        <Field>
           <FieldLabel>Size</FieldLabel>
           <Input
-            {...form.register(`variants.${vIndex}.size`)}
             placeholder="M, L, XL"
+            {...form.register(`variants.${vIndex}.size`)}
           />
         </Field>
 
@@ -114,6 +126,50 @@ function VariantItem({ variant, vIndex, form, onRemove }: VariantItemProps) {
           <Input {...form.register(`variants.${vIndex}.color`)} />
         </Field>
 
+        <Field>
+          <FieldLabel>Material</FieldLabel>
+          <Input {...form.register(`variants.${vIndex}.material`)} />
+        </Field>
+
+        <Field>
+          <FieldLabel>Style</FieldLabel>
+          <Input {...form.register(`variants.${vIndex}.style`)} />
+        </Field>
+
+        <Field>
+          <FieldLabel>Weight</FieldLabel>
+          <Input
+            type="number"
+            step="0.01"
+            placeholder="0.00"
+            {...form.register(`variants.${vIndex}.weight`, {
+              valueAsNumber: true,
+            })}
+          />
+        </Field>
+
+        <Field>
+          <FieldLabel>Weight Unit</FieldLabel>
+          <Input
+            placeholder="g, kg, lb"
+            {...form.register(`variants.${vIndex}.weightUnit`)}
+          />
+        </Field>
+
+        <Field>
+          <FieldLabel>Barcode</FieldLabel>
+          <Input {...form.register(`variants.${vIndex}.barcode`)} />
+        </Field>
+
+        <Field>
+          <FieldLabel>Currency</FieldLabel>
+          <Input
+            placeholder="USD"
+            {...form.register(`variants.${vIndex}.currency`)}
+          />
+        </Field>
+
+        {/* Inventory */}
         <Field>
           <FieldLabel>Quantity</FieldLabel>
           <Input
@@ -124,9 +180,31 @@ function VariantItem({ variant, vIndex, form, onRemove }: VariantItemProps) {
           />
         </Field>
 
-        {/* Option Values - Dynamic Attributes */}
+        <Field>
+          <FieldLabel>Low Stock Threshold</FieldLabel>
+          <Input
+            type="number"
+            {...form.register(
+              `variants.${vIndex}.inventory.lowStockThreshold`,
+              {
+                valueAsNumber: true,
+              },
+            )}
+          />
+        </Field>
+
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id={`taxable-${vIndex}`}
+            {...form.register(`variants.${vIndex}.taxable`)}
+          />
+          <label htmlFor={`taxable-${vIndex}`}>Taxable</label>
+        </div>
+
+        {/* Option Values (dynamic key‑value pairs) */}
         <div className="md:col-span-3 mt-4">
-          <FieldLabel>Option Values (Attributes)</FieldLabel>
+          <FieldLabel>Option Values</FieldLabel>
           <FieldDescription>
             Add attributes like Color, Size, Material etc.
           </FieldDescription>
@@ -172,6 +250,7 @@ function VariantItem({ variant, vIndex, form, onRemove }: VariantItemProps) {
   );
 }
 
+// ---------- Main ProductForm ----------
 export default function ProductForm({
   mode = "create",
   product,
@@ -182,7 +261,8 @@ export default function ProductForm({
   const [imageUrls, setImageUrls] = useState<string[]>(product?.images || []);
   const [showVariants, setShowVariants] = useState(true);
 
-  const emptyVariant: ProductFormValues["variants"][number] = {
+  // Full variant default – used for both initial and append
+  const emptyVariant = {
     sku: "",
     price: 0,
     compareAtPrice: 0,
@@ -196,7 +276,7 @@ export default function ProductForm({
     currency: "USD",
     barcode: "",
     taxable: true,
-    optionValues: [],
+    optionValues: [] as { key: string; value: string }[],
     inventory: {
       quantity: 0,
       lowStockThreshold: 5,
@@ -230,28 +310,49 @@ export default function ProductForm({
     name: "variants",
   });
 
+  // ✅ Fixed: functional state update avoids stale closure
   const handleUploadSuccess = (result: any) => {
     const url = result?.info?.secure_url;
     if (url) {
-      const newImages = [...imageUrls, url];
-      setImageUrls(newImages);
-      form.setValue("images", newImages, { shouldValidate: true });
+      setImageUrls((prev) => {
+        const newImages = [...prev, url];
+        form.setValue("images", newImages, { shouldValidate: true });
+        return newImages;
+      });
       toast.success("Image uploaded successfully!");
     }
   };
 
   const removeImage = (index: number) => {
-    const updatedImages = imageUrls.filter((_, i) => i !== index);
-    setImageUrls(updatedImages);
-    form.setValue("images", updatedImages, { shouldValidate: true });
+    setImageUrls((prev) => {
+      const updatedImages = prev.filter((_, i) => i !== index);
+      form.setValue("images", updatedImages, { shouldValidate: true });
+      return updatedImages;
+    });
   };
 
-  const onSubmit = async (values: z.infer<typeof productSchema>) => {
+  const onSubmit = async (values: ProductFormValues) => {
     try {
-      console.log("Submitted Product:", values);
+      // Transform optionValues from array to Record<string,string>
+      const formattedValues = {
+        ...values,
+        variants: values.variants?.map((variant) => ({
+          ...variant,
+          optionValues: variant.optionValues?.reduce(
+            (acc, item) => {
+              if (item?.key && item?.value) {
+                acc[item.key] = item.value;
+              }
+              return acc;
+            },
+            {} as Record<string, string>,
+          ),
+        })),
+      };
 
-      const result = await createProduct(values);
-      console.log("result", result);
+      // ✅ Now submit the correct transformed data
+      const result = await createProduct(formattedValues);
+
       if (result?.success === false) {
         toast.error(result.error || "Failed to create product");
         return;
@@ -276,7 +377,7 @@ export default function ProductForm({
         })}
         className="space-y-10 max-w-5xl mx-auto py-10"
       >
-        {/* Title & Slug */}
+        {/* Title */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Field>
             <FieldLabel>Title</FieldLabel>
@@ -288,6 +389,7 @@ export default function ProductForm({
           </Field>
         </div>
 
+        {/* Description */}
         <Field>
           <FieldLabel>Description</FieldLabel>
           <Textarea rows={4} {...form.register("description")} />
@@ -358,7 +460,7 @@ export default function ProductForm({
           </Field>
         </div>
 
-        {/* Images */}
+        {/* Image Upload */}
         <Field>
           <FieldLabel>Product Images</FieldLabel>
           <FieldDescription>
@@ -383,15 +485,15 @@ export default function ProductForm({
                 <div key={index} className="relative group">
                   <Image
                     src={url}
-                    alt=""
+                    alt={`Product image ${index + 1}`}
                     width={200}
                     height={200}
-                    className="rounded-xl object-cover border"
+                    className="rounded-xl object-cover border aspect-square"
                   />
                   <button
                     type="button"
                     onClick={() => removeImage(index)}
-                    className="absolute -top-2 -right-2 bg-red-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100"
+                    className="absolute -top-2 -right-2 bg-red-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <X size={16} />
                   </button>
@@ -408,7 +510,7 @@ export default function ProductForm({
           <FieldError>{form.formState.errors.images?.message}</FieldError>
         </Field>
 
-        {/* Variants */}
+        {/* Variants Section */}
         <div className="border rounded-xl p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-semibold">Variants</h2>
@@ -436,24 +538,7 @@ export default function ProductForm({
 
               <Button
                 type="button"
-                onClick={() =>
-                  appendVariant({
-                    sku: "",
-                    price: 0,
-                    compareAtPrice: 0,
-                    costPerItem: 0,
-                    optionValues: [],
-                    weightUnit: "g",
-                    currency: "USD",
-                    barcode: "",
-                    taxable: true,
-                    inventory: {
-                      quantity: 0,
-                      lowStockThreshold: 5,
-                      allowBackorder: false,
-                    },
-                  })
-                }
+                onClick={() => appendVariant(emptyVariant)} // ✅ now uses full default
                 variant="outline"
                 className="w-full"
               >
@@ -463,12 +548,7 @@ export default function ProductForm({
           )}
         </div>
 
-        <Button
-          type="submit"
-          size="lg"
-          className="w-full"
-          // disabled={form.formState.isSubmitting}
-        >
+        <Button type="submit" size="lg" className="w-full">
           {mode === "create" ? "Create Product" : "Update Product"}
         </Button>
       </form>
