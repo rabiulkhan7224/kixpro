@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import CollectionView from "@/components/admin/collections/CollectionView";
 import { getCollectionById } from "@/lib/actions/collection";
-import CollectionForm from "@/components/admin/collections/categoryForm";
+import CollectionForm from "@/components/admin/collections/collectionForm";
 import DeleteCollectionConfirm from "@/components/admin/collections/DeleteCollectionConfirm";
 
 // ---------- Types ----------

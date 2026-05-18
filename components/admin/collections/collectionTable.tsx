@@ -56,7 +56,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import Image from "next/image";
-// import { deleteCollection } from "@/lib/actions/category";
+// import { deleteCollection } from "@/lib/actions/collection";
 import { toast } from "sonner";
 
 type Collection = {
@@ -155,7 +155,7 @@ export function CollectionTable({ data }: { data: Collection[] }) {
       id: "actions",
       header: "Actions",
       cell: ({ row }) => {
-        const category = row.original;
+        const collection = row.original;
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -166,7 +166,7 @@ export function CollectionTable({ data }: { data: Collection[] }) {
             <DropdownMenuContent align="end">
               <DropdownMenuItem
                 onClick={() =>
-                  router.push(`/admin/categories/view?id=${category.id}`)
+                  router.push(`/admin/collections/view?id=${collection.id}`)
                 }
               >
                 <Eye className="mr-2 h-4 w-4" />
@@ -174,7 +174,7 @@ export function CollectionTable({ data }: { data: Collection[] }) {
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() =>
-                  router.push(`/admin/categories/edit?id=${category.id}`)
+                  router.push(`/admin/collections/edit?id=${collection.id}`)
                 }
               >
                 <Edit className="mr-2 h-4 w-4" />
@@ -186,8 +186,8 @@ export function CollectionTable({ data }: { data: Collection[] }) {
                 onClick={() =>
                   setDeleteDialog({
                     open: true,
-                    id: category.id,
-                    name: category.name,
+                    id: collection.id,
+                    name: collection.name,
                   })
                 }
               >
@@ -220,7 +220,7 @@ export function CollectionTable({ data }: { data: Collection[] }) {
       // Refresh data
       window.location.reload(); // or use router.refresh() if using server component
     } catch (error: any) {
-      toast.error(error.message || "Failed to delete category");
+      toast.error(error.message || "Failed to delete collection");
     }
   };
   // Export Functions
@@ -232,7 +232,7 @@ export function CollectionTable({ data }: { data: Collection[] }) {
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `categories-${new Date().toISOString().split("T")[0]}.csv`;
+    link.download = `collections-${new Date().toISOString().split("T")[0]}.csv`;
     link.click();
   };
 
@@ -245,7 +245,7 @@ export function CollectionTable({ data }: { data: Collection[] }) {
     XLSX.utils.book_append_sheet(workbook, worksheet, "Categories");
     XLSX.writeFile(
       workbook,
-      `categories-${new Date().toISOString().split("T")[0]}.xlsx`,
+      `collections-${new Date().toISOString().split("T")[0]}.xlsx`,
     );
   };
 
@@ -257,7 +257,7 @@ export function CollectionTable({ data }: { data: Collection[] }) {
     const blob = new Blob([json], { type: "application/json" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `categories-${new Date().toISOString().split("T")[0]}.json`;
+    link.download = `collections-${new Date().toISOString().split("T")[0]}.json`;
     link.click();
   };
 
@@ -265,7 +265,7 @@ export function CollectionTable({ data }: { data: Collection[] }) {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <Input
-          placeholder="Search categories..."
+          placeholder="Search collections..."
           value={globalFilter}
           onChange={(e) => setGlobalFilter(e.target.value)}
           className="max-w-sm"
@@ -360,7 +360,7 @@ export function CollectionTable({ data }: { data: Collection[] }) {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No categories found.
+                  No collections found.
                 </TableCell>
               </TableRow>
             )}

@@ -11,6 +11,7 @@ import {
 import { revalidateTag } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -108,16 +109,20 @@ export async function login(data: LoginFormValues) {
 // Get Current User
 export async function getUser(): Promise<User | null> {
   try {
+    await connection();
+
     const cookieStore = await cookies();
     const token = cookieStore.get("access_token")?.value;
 
     if (!token) return null;
 
     const res = await fetch(`${API_BASE}/auth/me`, {
+      method: "GET",
       headers: {
         Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
       },
-      cache: "no-store", // Stronger for auth
+
       next: { tags: ["user"] },
     });
 
@@ -135,16 +140,36 @@ export async function logout() {
   const cookieStore = await cookies();
 
   // Proper cookie deletion
-  cookieStore.delete({
+  // cookieStore.delete({
+  //   name: "access_token",
+  //   path: "/",
+  //   secure: process.env.NODE_ENV === "production",
+  //   sameSite: "lax",
+  // });
+
+  // cookieStore.delete({
+  //   name: "refresh_token",
+  //   path: "/",
+  //   secure: process.env.NODE_ENV === "production",
+  //   sameSite: "lax",
+  // });
+
+  cookieStore.set({
     name: "access_token",
+    value: "",
     path: "/",
+    maxAge: 0,
+    httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
   });
 
-  cookieStore.delete({
+  cookieStore.set({
     name: "refresh_token",
+    value: "",
     path: "/",
+    maxAge: 0,
+    httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
   });

@@ -23,10 +23,10 @@ import {
 } from "@/components/ui/select";
 import { useState } from "react";
 import { CldUploadButton } from "next-cloudinary";
-import Image from "next/image";
 import { X, Upload, Trash2, Plus } from "lucide-react";
 import { createProduct } from "@/lib/actions/product";
 import { productSchema } from "@/types/product";
+import Image from "next/image";
 
 type ProductFormValues = z.infer<typeof productSchema>;
 
@@ -351,6 +351,7 @@ export default function ProductForm({
       };
 
       // ✅ Now submit the correct transformed data
+      console.log("formattedValues", formattedValues);
       const result = await createProduct(formattedValues);
 
       if (result?.success === false) {

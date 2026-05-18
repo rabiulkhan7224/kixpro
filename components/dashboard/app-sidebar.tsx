@@ -186,7 +186,7 @@ const AppSidebar = ({ children }: { children: React.ReactNode }) => {
         <header className="sticky top-0 z-50 flex items-center border-b px-6 py-3 bg-background">
           <SiteHeader />
         </header>
-        <main className="flex-1">{children}</main>
+        <main className="overflow-x-auto flex-1 p-6">{children}</main>
       </div>
     </SidebarProvider>
   );
