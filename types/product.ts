@@ -89,3 +89,45 @@ export type Inventory = {
   lowStockThreshold?: number;
   allowBackorder?: boolean;
 };
+
+export type ProductFilters = {
+  page?: number;
+  limit?: number;
+  sortOrder?: "ASC" | "DESC";
+  search?: string;
+  categoryId?: string;
+  collectionId?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  inStock?: boolean;
+};
+
+export type ProductResponse = {
+  data: Item[];
+  meta?: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+};
+
+export type Item = {
+  id?: string;
+  title?: string;
+  slug?: string;
+  description?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+  images?: string[];
+  category?: Category;
+  collection?: Category;
+  variants?: Variant[];
+  minPrice?: number;
+  maxPrice?: number;
+  totalStock?: number;
+};
+export type Category = {
+  id?: string;
+  name?: string;
+};

@@ -48,7 +48,6 @@ export async function getCollections() {
   }
 }
 
-// ====================== CREATE PRODUCT ======================
 export async function createProduct(data: any) {
   try {
     const res = await fetch(`${API_BASE}/products/with-variants`, {
@@ -58,30 +57,37 @@ export async function createProduct(data: any) {
     });
 
     const responseData = await res.json();
-    console.log(responseData);
+    console.log("API Response", responseData);
 
-    if (!responseData.success) {
+    // 1. Handle HTTP Error status codes (400, 401, 500, etc.)
+    if (!res.ok) {
+      // Handle NestJS class-validator array errors vs generic errors
+      const errorMessage = Array.isArray(responseData?.message)
+        ? responseData.message.join(", ")
+        : responseData?.message || "Failed to create product";
+
       return {
         success: false,
-        error:
-          responseData.message ||
-          responseData?.message?.[0] ||
-          "Failed to create product",
+        error: errorMessage,
       };
     }
 
+    // 2. Safely trigger revalidations now that we know res.ok is true
     revalidatePath("/admin/products");
-    revalidateTag("products", {});
-    return { success: true, data: responseData };
+    revalidateTag("products", "max"); // Fixed: removed the empty object {}
 
-    // redirect("/admin/products");
+    return {
+      success: true,
+      data: responseData,
+    };
   } catch (error: any) {
+    // Keep this fallback to let Next.js handle redirects cleanly if you uncomment redirect()
     if (error?.digest?.includes("NEXT_REDIRECT")) throw error;
 
     console.error("[Create Product Error]", error);
     return {
       success: false,
-      error: error.message || "Failed to create product",
+      error: error.message || "An unexpected network error occurred",
     };
   }
 }
@@ -131,5 +137,58 @@ export async function getProductById(id: string) {
   } catch (error) {
     console.error("[Get Product Error]", error);
     return null;
+  }
+}
+
+// get products with pagination, search, filters
+export async function getProducts(filters: any) {
+  try {
+    const queryParams = new URLSearchParams();
+
+    if (filters.page) queryParams.append("page", filters.page);
+    if (filters.limit) queryParams.append("limit", filters.limit);
+    if (filters.sortOrder) queryParams.append("sortOrder", filters.sortOrder);
+    if (filters.search) queryParams.append("search", filters.search);
+    if (filters.categoryId)
+      queryParams.append("categoryId", filters.categoryId);
+    if (filters.collectionId)
+      queryParams.append("collectionId", filters.collectionId);
+    if (filters.minPrice !== undefined)
+      queryParams.append("minPrice", filters.minPrice);
+    if (filters.maxPrice !== undefined)
+      queryParams.append("maxPrice", filters.maxPrice);
+    if (filters.inStock !== undefined)
+      queryParams.append("inStock", filters.inStock);
+
+    const res = await fetch(`${API_BASE}/products?${queryParams.toString()}`, {
+      cache: "no-store",
+      next: { tags: ["products"] },
+    });
+
+    if (!res.ok) {
+      return {
+        data: [],
+        meta: {
+          total: 0,
+          page: filters.page || 1,
+          limit: filters.limit || 10,
+          totalPages: 0,
+        },
+      };
+    }
+
+    const result = await res.json();
+    return result;
+  } catch (error) {
+    console.error("[Get Products Error]", error);
+    return {
+      product: [],
+      meta: {
+        total: 0,
+        page: filters.page || 1,
+        limit: filters.limit || 10,
+        totalPages: 0,
+      },
+    };
   }
 }

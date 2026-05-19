@@ -3,18 +3,18 @@
 import { useState } from "react";
 import {
   MoreHorizontal,
-  Edit,
   Eye,
+  Pencil,
   Trash2,
   Download,
   FileTextIcon,
   FileSpreadsheetIcon,
-  FolderPen,
+  Package,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
+import { toast } from "sonner";
 
 import type { ColumnDef } from "@tanstack/react-table";
 import {
@@ -37,7 +37,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -57,33 +56,36 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import Image from "next/image";
-// import { deleteCollection } from "@/lib/actions/collection";
-import { toast } from "sonner";
 
-type Collection = {
+// ---------- Types ----------
+type Product = {
   id: string;
-  name: string;
+  title: string;
   slug: string;
   description?: string;
-  image?: string;
+  images: string[];
+  category?: { id: string; name: string } | null;
+  collection?: { id: string; name: string } | null;
+  variants: Array<Record<string, any>>;
+  minPrice: number;
+  maxPrice: number;
+  totalStock: number;
   createdAt: string;
   updatedAt: string;
 };
 
-export function CollectionTable({ data }: { data: Collection[] }) {
+// ---------- Component ----------
+export function ProductTable({ data = [] }: { data?: Product[] }) {
   const router = useRouter();
   const [globalFilter, setGlobalFilter] = useState("");
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean;
     id: string;
-    name: string;
-  }>({
-    open: false,
-    id: "",
-    name: "",
-  });
+    title: string;
+  }>({ open: false, id: "", title: "" });
 
-  const columns: ColumnDef<Collection>[] = [
+  // ---------- Columns Definition ----------
+  const columns: ColumnDef<Product>[] = [
     {
       id: "select",
       header: ({ table }) => (
@@ -100,63 +102,100 @@ export function CollectionTable({ data }: { data: Collection[] }) {
       ),
     },
     {
-      accessorKey: "image",
+      accessorKey: "images",
       header: "Image",
       cell: ({ row }) => {
-        const image = row.getValue("image") as string;
-        return image ? (
+        const images = row.original.images;
+        const src =
+          Array.isArray(images) && images.length > 0 ? images[0] : null;
+        return src ? (
           <Image
-            src={image}
-            alt={row.original.name}
+            src={src}
+            alt={row.original.title}
             width={48}
             height={48}
             className="rounded-md object-cover border"
           />
         ) : (
           <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center">
-            <span className="text-xs text-muted-foreground">No img</span>
+            <Package className="h-4 w-4 text-muted-foreground" />
           </div>
         );
       },
     },
     {
-      accessorKey: "name",
-      header: "Name",
+      accessorKey: "title",
+      header: "Title",
       cell: ({ row }) => (
-        <div className="font-medium">{row.getValue("name")}</div>
-      ),
-    },
-    {
-      accessorKey: "slug",
-      header: "Slug",
-    },
-    {
-      accessorKey: "description",
-      header: "Description",
-      cell: ({ row }) => (
-        <div className="max-w-xs truncate text-sm text-muted-foreground">
-          {row.getValue("description") || "—"}
+        <div className="font-medium max-w-50 truncate">
+          {row.getValue("title")}
         </div>
       ),
     },
     {
+      id: "category",
+      header: "Category",
+      accessorFn: (row) => row.category?.name ?? "—",
+      cell: ({ getValue }) => (
+        <span className="text-sm text-muted-foreground">
+          {getValue() as string}
+        </span>
+      ),
+    },
+    {
+      id: "collection",
+      header: "Collection",
+      accessorFn: (row) => row.collection?.name ?? "—",
+      cell: ({ getValue }) => (
+        <span className="text-sm text-muted-foreground">
+          {getValue() as string}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "variants",
+      header: "Variants",
+      cell: ({ row }) => {
+        const count = row.original.variants?.length ?? 0;
+        return (
+          <span className="text-sm">
+            {count} variant{count !== 1 ? "s" : ""}
+          </span>
+        );
+      },
+    },
+    {
+      id: "price",
+      header: "Price",
+      accessorFn: (row) =>
+        row.minPrice === row.maxPrice
+          ? `$${row.minPrice.toFixed(2)}`
+          : `$${row.minPrice.toFixed(2)} – $${row.maxPrice.toFixed(2)}`,
+      cell: ({ getValue }) => (
+        <span className="text-sm font-medium">{getValue() as string}</span>
+      ),
+    },
+    {
+      accessorKey: "totalStock",
+      header: "Stock",
+      cell: ({ row }) => {
+        const stock = row.getValue("totalStock") as number;
+        return (
+          <span className={stock === 0 ? "text-red-500" : ""}>{stock}</span>
+        );
+      },
+    },
+    {
       accessorKey: "createdAt",
-      header: "Created At",
+      header: "Created",
       cell: ({ row }) =>
         new Date(row.getValue("createdAt")).toLocaleDateString(),
     },
     {
-      accessorKey: "updatedAt",
-      header: "Updated At",
-      cell: ({ row }) =>
-        new Date(row.getValue("updatedAt")).toLocaleDateString(),
-    },
-
-    {
       id: "actions",
-      header: "Actions",
+      header: "",
       cell: ({ row }) => {
-        const collection = row.original;
+        const product = row.original;
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -167,7 +206,7 @@ export function CollectionTable({ data }: { data: Collection[] }) {
             <DropdownMenuContent align="end">
               <DropdownMenuItem
                 onClick={() =>
-                  router.push(`/admin/collections/view?id=${collection.id}`)
+                  router.push(`/admin/products/view?id=${product.id}`)
                 }
               >
                 <Eye className="mr-2 h-4 w-4" />
@@ -175,10 +214,10 @@ export function CollectionTable({ data }: { data: Collection[] }) {
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() =>
-                  router.push(`/admin/collections/edit?id=${collection.id}`)
+                  router.push(`/admin/products/edit?id=${product.id}`)
                 }
               >
-                <FolderPen className="mr-2 h-4 w-4" />
+                <Pencil className="mr-2 h-4 w-4" />
                 Edit
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -187,12 +226,13 @@ export function CollectionTable({ data }: { data: Collection[] }) {
                 onClick={() =>
                   setDeleteDialog({
                     open: true,
-                    id: collection.id,
-                    name: collection.name,
+                    id: product.id,
+                    title: product.title,
                   })
                 }
               >
-                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -201,6 +241,7 @@ export function CollectionTable({ data }: { data: Collection[] }) {
     },
   ];
 
+  // ---------- Table Instance ----------
   const table = useReactTable({
     data,
     columns,
@@ -210,63 +251,73 @@ export function CollectionTable({ data }: { data: Collection[] }) {
     getFilteredRowModel: getFilteredRowModel(),
     state: { globalFilter },
     onGlobalFilterChange: setGlobalFilter,
+    initialState: { pagination: { pageSize: 10 } },
   });
 
-  // Delete Handler
+  // ---------- Delete Handler ----------
   const handleDeleteConfirm = async () => {
     try {
-      // await deleteCollection(deleteDialog.id);
-      toast.success("Collection deleted successfully");
-      setDeleteDialog({ open: false, id: "", name: "" });
-      // Refresh data
-      window.location.reload(); // or use router.refresh() if using server component
+      //   await deleteProduct(deleteDialog.id);
+      toast.success("Product deleted successfully");
+      setDeleteDialog({ open: false, id: "", title: "" });
+      router.refresh(); // Refresh server component data
     } catch (error: any) {
-      toast.error(error.message || "Failed to delete collection");
+      toast.error(error.message || "Failed to delete product");
     }
   };
-  // Export Functions
+
+  // ---------- Export Functions ----------
+  const getExportData = () =>
+    table.getFilteredRowModel().rows.map((row) => ({
+      Title: row.original.title,
+      Slug: row.original.slug,
+      Category: row.original.category?.name ?? "",
+      Collection: row.original.collection?.name ?? "",
+      Variants: row.original.variants?.length ?? 0,
+      "Min Price": row.original.minPrice,
+      "Max Price": row.original.maxPrice,
+      Stock: row.original.totalStock,
+      Created: row.original.createdAt,
+      Updated: row.original.updatedAt,
+    }));
+
   const exportToCSV = () => {
-    const dataToExport = table
-      .getFilteredRowModel()
-      .rows.map((row) => row.original);
-    const csv = Papa.unparse(dataToExport);
+    const data = getExportData();
+    const csv = Papa.unparse(data);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `collections-${new Date().toISOString().split("T")[0]}.csv`;
+    link.download = `products-${new Date().toISOString().split("T")[0]}.csv`;
     link.click();
   };
 
   const exportToExcel = () => {
-    const dataToExport = table
-      .getFilteredRowModel()
-      .rows.map((row) => row.original);
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const data = getExportData();
+    const worksheet = XLSX.utils.json_to_sheet(data);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Categories");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Products");
     XLSX.writeFile(
       workbook,
-      `collections-${new Date().toISOString().split("T")[0]}.xlsx`,
+      `products-${new Date().toISOString().split("T")[0]}.xlsx`,
     );
   };
 
   const exportToJSON = () => {
-    const dataToExport = table
-      .getFilteredRowModel()
-      .rows.map((row) => row.original);
-    const json = JSON.stringify(dataToExport, null, 2);
+    const data = table.getFilteredRowModel().rows.map((row) => row.original);
+    const json = JSON.stringify(data, null, 2);
     const blob = new Blob([json], { type: "application/json" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `collections-${new Date().toISOString().split("T")[0]}.json`;
+    link.download = `products-${new Date().toISOString().split("T")[0]}.json`;
     link.click();
   };
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      {/* Top controls */}
+      <div className="flex flex-col sm:flex-row sm:justify-between gap-3">
         <Input
-          placeholder="Search collections..."
+          placeholder="Search products..."
           value={globalFilter}
           onChange={(e) => setGlobalFilter(e.target.value)}
           className="max-w-sm"
@@ -295,36 +346,9 @@ export function CollectionTable({ data }: { data: Collection[] }) {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-
-        {/* Delete Confirmation Dialog */}
-        <AlertDialog
-          open={deleteDialog.open}
-          onOpenChange={(open) =>
-            setDeleteDialog((prev) => ({ ...prev, open }))
-          }
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will permanently delete{" "}
-                <span className="font-medium">"{deleteDialog.name}"</span>. This
-                action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDeleteConfirm}
-                className="bg-destructive hover:bg-destructive/90"
-              >
-                Delete Collection
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </div>
 
+      {/* Table */}
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -342,7 +366,7 @@ export function CollectionTable({ data }: { data: Collection[] }) {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows.length ? (
+            {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id}>
                   {row.getVisibleCells().map((cell) => (
@@ -361,13 +385,64 @@ export function CollectionTable({ data }: { data: Collection[] }) {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No collections found.
+                  No products found.
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </div>
+
+      {/* Pagination */}
+      <div className="flex items-center justify-between text-sm">
+        <span className="text-muted-foreground">
+          {table.getFilteredRowModel().rows.length} product(s)
+        </span>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+          >
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog((prev) => ({ ...prev, open }))}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Product</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete{" "}
+              <span className="font-medium">"{deleteDialog.title}"</span>? This
+              action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

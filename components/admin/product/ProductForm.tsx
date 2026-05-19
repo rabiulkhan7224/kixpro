@@ -353,6 +353,7 @@ export default function ProductForm({
       // ✅ Now submit the correct transformed data
       console.log("formattedValues", formattedValues);
       const result = await createProduct(formattedValues);
+      console.log("api response", result);
 
       if (result?.success === false) {
         toast.error(result.error || "Failed to create product");
@@ -364,6 +365,7 @@ export default function ProductForm({
           ? "Product created successfully!"
           : "Product updated!",
       );
+      form.reset();
     } catch (error: any) {
       toast.error(error.message || "Failed to submit form");
     }
