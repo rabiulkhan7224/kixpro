@@ -56,26 +56,44 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import Image from "next/image";
+import { Item, PaginationMeta, ProductFilters } from "@/types/product";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { deleteProduct } from "@/lib/actions/product";
+import { id } from "zod/v4/locales";
 
-// ---------- Types ----------
-type Product = {
-  id: string;
-  title: string;
-  slug: string;
-  description?: string;
-  images: string[];
-  category?: { id: string; name: string } | null;
-  collection?: { id: string; name: string } | null;
-  variants: Array<Record<string, any>>;
-  minPrice: number;
-  maxPrice: number;
-  totalStock: number;
-  createdAt: string;
-  updatedAt: string;
-};
+interface Props {
+  data: Item[];
+  meta: PaginationMeta;
+  filters: ProductFilters;
+  onSearch: (search: string) => void;
+  onPageChange: (page: number) => void;
+}
+
+// ---------- Simple debounce helper ----------
+function useDebounce(callback: (value: string) => void, delay = 400) {
+  let timer: NodeJS.Timeout;
+  return (value: string) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => callback(value), delay);
+  };
+}
 
 // ---------- Component ----------
-export function ProductTable({ data = [] }: { data?: Product[] }) {
+export function ProductTable({
+  data,
+  meta,
+  filters,
+  onSearch,
+  onPageChange,
+}: Props) {
   const router = useRouter();
   const [globalFilter, setGlobalFilter] = useState("");
   const [deleteDialog, setDeleteDialog] = useState<{
@@ -83,9 +101,10 @@ export function ProductTable({ data = [] }: { data?: Product[] }) {
     id: string;
     title: string;
   }>({ open: false, id: "", title: "" });
+  const debouncedSearch = useDebounce(onSearch, 900);
 
   // ---------- Columns Definition ----------
-  const columns: ColumnDef<Product>[] = [
+  const columns: ColumnDef<Item>[] = [
     {
       id: "select",
       header: ({ table }) => (
@@ -111,7 +130,7 @@ export function ProductTable({ data = [] }: { data?: Product[] }) {
         return src ? (
           <Image
             src={src}
-            alt={row.original.title}
+            alt={row.original.title || "images"}
             width={48}
             height={48}
             className="rounded-md object-cover border"
@@ -246,18 +265,20 @@ export function ProductTable({ data = [] }: { data?: Product[] }) {
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    state: { globalFilter },
-    onGlobalFilterChange: setGlobalFilter,
-    initialState: { pagination: { pageSize: 10 } },
+    manualPagination: true,
+    pageCount: meta.totalPages || 1,
+    state: {
+      pagination: {
+        pageIndex: (filters.page || 1) - 1,
+        pageSize: filters.limit || 10,
+      },
+    },
   });
 
   // ---------- Delete Handler ----------
   const handleDeleteConfirm = async () => {
     try {
-      //   await deleteProduct(deleteDialog.id);
+      await deleteProduct(deleteDialog.id);
       toast.success("Product deleted successfully");
       setDeleteDialog({ open: false, id: "", title: "" });
       router.refresh(); // Refresh server component data
@@ -269,6 +290,7 @@ export function ProductTable({ data = [] }: { data?: Product[] }) {
   // ---------- Export Functions ----------
   const getExportData = () =>
     table.getFilteredRowModel().rows.map((row) => ({
+      id: row.original.id,
       Title: row.original.title,
       Slug: row.original.slug,
       Category: row.original.category?.name ?? "",
@@ -312,14 +334,28 @@ export function ProductTable({ data = [] }: { data?: Product[] }) {
     link.click();
   };
 
+  // ---------- Generate pagination numbers ----------
+  const currentPage = filters.page || 1;
+  const totalPages = meta.totalPages || 1;
+  const maxVisiblePages = 5; // show at most 5 page numbers
+  const pageNumbers = [];
+
+  if (totalPages <= maxVisiblePages) {
+    for (let i = 1; i <= totalPages; i++) pageNumbers.push(i);
+  } else {
+    const start = Math.max(1, currentPage - 2);
+    const end = Math.min(totalPages, currentPage + 2);
+    for (let i = start; i <= end; i++) pageNumbers.push(i);
+  }
+
   return (
     <div className="space-y-4">
       {/* Top controls */}
       <div className="flex flex-col sm:flex-row sm:justify-between gap-3">
         <Input
           placeholder="Search products..."
-          value={globalFilter}
-          onChange={(e) => setGlobalFilter(e.target.value)}
+          defaultValue={filters.search || ""}
+          onChange={(e) => debouncedSearch(e.target.value)}
           className="max-w-sm"
         />
 
@@ -366,7 +402,7 @@ export function ProductTable({ data = [] }: { data?: Product[] }) {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {table.getRowModel().rows.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id}>
                   {row.getVisibleCells().map((cell) => (
@@ -392,32 +428,72 @@ export function ProductTable({ data = [] }: { data?: Product[] }) {
           </TableBody>
         </Table>
       </div>
-
-      {/* Pagination */}
+      {/* Pagination controls (shadcn) */}
       <div className="flex items-center justify-between text-sm">
         <span className="text-muted-foreground">
-          {table.getFilteredRowModel().rows.length} product(s)
+          Showing {data.length} of {meta.total} product(s)
         </span>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            Next
-          </Button>
-        </div>
-      </div>
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                onClick={() => onPageChange(currentPage - 1)}
+                aria-disabled={currentPage <= 1}
+                className={
+                  currentPage <= 1 ? "pointer-events-none opacity-50" : ""
+                }
+              />
+            </PaginationItem>
 
+            {pageNumbers[0] > 1 && (
+              <>
+                <PaginationItem>
+                  <PaginationLink onClick={() => onPageChange(1)}>
+                    1
+                  </PaginationLink>
+                </PaginationItem>
+                {pageNumbers[0] > 2 && <PaginationEllipsis />}
+              </>
+            )}
+
+            {pageNumbers.map((page) => (
+              <PaginationItem key={page}>
+                <PaginationLink
+                  isActive={page === currentPage}
+                  onClick={() => onPageChange(page)}
+                >
+                  {page}
+                </PaginationLink>
+              </PaginationItem>
+            ))}
+
+            {pageNumbers[pageNumbers.length - 1] < totalPages && (
+              <>
+                {pageNumbers[pageNumbers.length - 1] < totalPages - 1 && (
+                  <PaginationEllipsis />
+                )}
+                <PaginationItem>
+                  <PaginationLink onClick={() => onPageChange(totalPages)}>
+                    {totalPages}
+                  </PaginationLink>
+                </PaginationItem>
+              </>
+            )}
+
+            <PaginationItem>
+              <PaginationNext
+                onClick={() => onPageChange(currentPage + 1)}
+                aria-disabled={currentPage >= totalPages}
+                className={
+                  currentPage >= totalPages
+                    ? "pointer-events-none opacity-50"
+                    : ""
+                }
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      </div>
       {/* Delete confirmation dialog */}
       <AlertDialog
         open={deleteDialog.open}

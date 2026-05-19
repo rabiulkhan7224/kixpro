@@ -140,6 +140,31 @@ export async function getProductById(id: string) {
   }
 }
 
+export async function deleteProduct(id: string) {
+  try {
+    const res = await fetch(`${API_BASE}/products/${id}`, {
+      method: "DELETE",
+    });
+
+    if (!res.ok) {
+      console.error("[Delete Product Error]", await res.text());
+      return {
+        success: false,
+        error: "Failed to delete product",
+      };
+    }
+
+    revalidatePath("/admin/products");
+    revalidateTag("products", {});
+  } catch (error: any) {
+    console.error("[Delete Product Error]", error);
+    return {
+      success: false,
+      error: error.message || "Failed to delete product",
+    };
+  }
+}
+
 // get products with pagination, search, filters
 export async function getProducts(filters: any) {
   try {

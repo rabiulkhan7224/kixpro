@@ -113,21 +113,28 @@ export type ProductResponse = {
 };
 
 export type Item = {
-  id?: string;
-  title?: string;
-  slug?: string;
-  description?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
+  id: string;
+  title: string;
+  slug: string;
+  description: string;
+  createdAt: Date;
+  updatedAt: Date;
   images?: string[];
   category?: Category;
   collection?: Category;
   variants?: Variant[];
-  minPrice?: number;
-  maxPrice?: number;
-  totalStock?: number;
+  minPrice: number;
+  maxPrice: number;
+  totalStock: number;
 };
 export type Category = {
   id?: string;
   name?: string;
+};
+
+export type PaginationMeta = {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 };
